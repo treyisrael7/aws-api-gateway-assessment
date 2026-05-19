@@ -1,4 +1,141 @@
-# TODO: Define CloudFormation template metadata.
-# TODO: Define API Gateway resources.
-# TODO: Define Lambda resources.
-# TODO: Define permissions and outputs.
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Initial infrastructure for the AWS API Gateway assessment.
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Project Settings
+        Parameters:
+          - ProjectName
+          - Environment
+      - Label:
+          default: Cognito Settings
+        Parameters:
+          - CognitoUserPoolName
+    ParameterLabels:
+      ProjectName:
+        default: Project Name
+      Environment:
+        default: Environment
+      CognitoUserPoolName:
+        default: Cognito User Pool Name
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: scansource-api
+    Description: Short name used for resource naming and tags.
+
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: Deployment environment label.
+
+  CognitoUserPoolName:
+    Type: String
+    Default: scansource-user-pool
+    Description: Display name for the Cognito user pool.
+
+Resources:
+  # IAM role Lambda functions will use once they are added in a later step.
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-lambda-execution-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # REST API shell. Routes and Lambda integrations will be added later.
+  ApiGatewayRestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub '${ProjectName}-${Environment}-api'
+      Description: REST API for the AWS API Gateway assessment.
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Cognito user pool for API authentication.
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Ref CognitoUserPoolName
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          RequireUppercase: true
+      Schema:
+        - Name: email
+          Required: true
+          Mutable: true
+      UserPoolTags:
+        Project: !Ref ProjectName
+        Environment: !Ref Environment
+
+  # Public app client for sign-in and token retrieval during testing.
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub '${ProjectName}-${Environment}-client'
+      UserPoolId: !Ref CognitoUserPool
+      GenerateSecret: false
+      PreventUserExistenceErrors: ENABLED
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
+      SupportedIdentityProviders:
+        - COGNITO
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      RefreshTokenValidity: 30
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+
+Outputs:
+  ApiGatewayRestApiId:
+    Description: ID of the REST API.
+    Value: !Ref ApiGatewayRestApi
+
+  CognitoUserPoolId:
+    Description: ID of the Cognito user pool.
+    Value: !Ref CognitoUserPool
+
+  CognitoClientId:
+    Description: ID of the Cognito user pool app client.
+    Value: !Ref CognitoUserPoolClient
