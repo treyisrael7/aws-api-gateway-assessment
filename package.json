@@ -1,0 +1,15 @@
+{
+  "name": "scansource-api",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build:weather": "tsc",
+    "package:weather": "npm run build:weather && cd dist/lambda1 && bestzip ../weather.zip index.js",
+    "package:country": "node -e \"require('fs').mkdirSync('dist',{recursive:true})\" && cd lambdas/lambda2 && bestzip ../../dist/country.zip lambda_function.py",
+    "package": "npm run package:weather && npm run package:country"
+  },
+  "devDependencies": {
+    "bestzip": "^2.2.2",
+    "typescript": "^5.8.3"
+  }
+}
