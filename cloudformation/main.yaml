@@ -127,10 +127,25 @@ Resources:
         IdToken: hours
         RefreshToken: days
 
+  # Cognito authorizer for protected API methods added later.
+  ApiGatewayCognitoAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    Properties:
+      Name: !Sub '${ProjectName}-${Environment}-cognito-authorizer'
+      RestApiId: !Ref ApiGatewayRestApi
+      Type: COGNITO_USER_POOLS
+      IdentitySource: method.request.header.Authorization
+      ProviderARNs:
+        - !GetAtt CognitoUserPool.Arn
+
 Outputs:
   ApiGatewayRestApiId:
     Description: ID of the REST API.
     Value: !Ref ApiGatewayRestApi
+
+  ApiGatewayCognitoAuthorizerId:
+    Description: ID of the API Gateway Cognito authorizer.
+    Value: !Ref ApiGatewayCognitoAuthorizer
 
   CognitoUserPoolId:
     Description: ID of the Cognito user pool.
