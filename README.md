@@ -7,11 +7,11 @@ Small serverless API for an AWS assessment. Two endpoints, both protected by Cog
 - `GET /weather?city={city}`: weather data from OpenWeatherMap
 - `GET /country?name={country}`: country info from REST Countries
 
-Weather Lambda is TypeScript, country Lambda is Python, everything else is CloudFormation.
+Weather Lambda is TypeScript, country Lambda is Python, and the infrastructure is managed through CloudFormation.
 
 ## Architecture
 
-```
+```text
 Client -> API Gateway (Cognito authorizer) -> Lambda -> external API
 ```
 
@@ -25,13 +25,29 @@ Request comes in with a Cognito token in the `Authorization` header. API Gateway
 - OpenWeatherMap API (needs a key)
 - REST Countries API (no key)
 
+## Repository Structure
+
+```text
+.
+├── README.md
+├── cloudformation/
+│   └── main.yaml
+├── lambdas/
+│   ├── lambda1/
+│   │   └── index.ts
+│   └── lambda2/
+│       └── lambda_function.py
+├── package.json
+└── tsconfig.json
+```
+
 ## Deployment
 
 You'll need AWS CLI configured, Node/npm installed, an OpenWeather API key, and an S3 bucket for the Lambda zip files (`YOUR_BUCKET_NAME`).
 
 In production I'd put the OpenWeather key in Secrets Manager or SSM instead of passing it through CloudFormation. Kept it simple here for the assessment.
 
-**1. Install and package the Lambdas**
+### 1. Install and package the Lambdas
 
 ```sh
 npm install
@@ -40,14 +56,14 @@ npm run package
 
 That gives you `dist/weather.zip` and `dist/country.zip`.
 
-**2. Upload to S3**
+### 2. Upload to S3
 
 ```sh
 aws s3 cp dist/weather.zip s3://YOUR_BUCKET_NAME/lambda1/weather.zip
 aws s3 cp dist/country.zip s3://YOUR_BUCKET_NAME/lambda2/country.zip
 ```
 
-**3. Deploy the stack**
+### 3. Deploy the stack
 
 ```sh
 aws cloudformation deploy \
@@ -79,7 +95,9 @@ aws cognito-idp admin-create-user \
   --username testuser@example.com \
   --user-attributes Name=email,Value=testuser@example.com Name=email_verified,Value=true \
   --message-action SUPPRESS
+```
 
+```sh
 aws cognito-idp admin-set-user-password \
   --user-pool-id YOUR_USER_POOL_ID \
   --username testuser@example.com \
@@ -183,6 +201,6 @@ aws s3 rm s3://YOUR_BUCKET_NAME/lambda2/country.zip
 - Both endpoints require Cognito auth
 - Lambda code comes from S3, so you have to build/upload zips before deploy (or redeploy after code changes)
 - Weather Lambda needs TypeScript compiled before packaging
-- OpenWeather key goes through CloudFormation here. Not how I'd do it in prod.
+- OpenWeather key goes through CloudFormation here. Not how I'd do it in a real production environment
 - Lambdas return CORS headers but there are no OPTIONS methods on API Gateway
 - Example response values will vary depending on the live API data
